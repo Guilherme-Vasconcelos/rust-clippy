@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# This script checks if we had any modifications in a Cargo.toml between HEAD and ORIG_HEAD.
+#
+# Install it as:
+#   - a post-merge hook (so it gets triggered with pull, except* if --rebase).
+#   - a post-rewrite hook (so it gets triggered with a rebase).
+# Notice that it will also execute when doing a commit --amend or a rebase with a branch of your
+# own. I personally don't see a problem, but feel free to modify the script if you wish so.
+#
+# * It does trigger on a rebase if git picks fast-forwarding. But if that's not possible,
+# then it does a --no-ff, and this will not trigger.
+
+head=$(git rev-parse --short HEAD)
+orig_head=$(git rev-parse --short ORIG_HEAD --quiet 2>/dev/null)
+
+if test $? -ne 0
+then
+    echo "ORIG_HEAD is not set. Unable to continue -- exiting successfully"
+    exit 0
+fi
+
+echo "Checking for Cargo.toml changes between HEAD $head and ORIG_HEAD $orig_head"
+
+altered_files=$(git diff "$orig_head" "$head" --name-only)
+
+had_altered_toml=0
+echo "List of altered Cargo.toml:"
+for filename in $altered_files
+do
+    case "$filename" in
+        *Cargo.toml*)
+            echo "$filename"
+            had_altered_toml=1
+
+            ;;
+    esac
+done
+
+if test $had_altered_toml -eq 0
+then
+    echo "None! No Cargo.toml was altered."
+fi
